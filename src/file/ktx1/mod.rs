@@ -7,8 +7,7 @@ use num_traits::*;
 use crate::file::{FileCodec, FileFormat};
 use crate::{Dimensions, FileBlob, RuxResult, Texture};
 
-mod constants;
-mod mapping;
+use crate::pixel::PixelFormat;
 
 // https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/#1
 //
@@ -57,7 +56,7 @@ const KTX1_MAGIC: [u8; 12] = [
 const KTX1_BIG_ENDIAN: [u8; 4] = [0x04, 0x03, 0x02, 0x01];
 const KTX1_LITTLE_ENDIAN: [u8; 4] = [0x01, 0x02, 0x03, 0x04];
 
-const KTX_HEADER_SIZE: usize = 64;
+const HEADER_SIZE: usize = 64;
 
 pub struct Ktx1Codec;
 
@@ -69,7 +68,7 @@ impl FileCodec for Ktx1Codec {
         // this is an invariant here
         assert_eq!(contents[0..12], KTX1_MAGIC);
 
-        if contents.len() < KTX_HEADER_SIZE {
+        if contents.len() < HEADER_SIZE {
             bail!(format!(
                 "KTX1: Invalid file; header truncated at {} bytes",
                 contents.len()
@@ -90,25 +89,25 @@ impl FileCodec for Ktx1Codec {
         );
 
         let gl_type = reader.read_u32()?;
-        if gl_type != 0 {
-            bail!("KTX1: Field 'gl_type' must be 0. (This tool temporarily supports only compressed textures.)");
-        }
+        // if gl_type != 0 {
+        //     bail!("KTX1: Field 'gl_type' must be 0. (This tool temporarily supports only compressed textures.)");
+        // }
         let gl_type_size = reader.read_u32()?;
-        if gl_type_size != 1 {
-            bail!("KTX1: Field 'gl_type_size' must be 1. (This tool temporarily supports only compressed textures.)");
-        }
+        // if gl_type_size != 1 {
+        //     bail!("KTX1: Field 'gl_type_size' must be 1. (This tool temporarily supports only compressed textures.)");
+        // }
         let gl_format = reader.read_u32()?;
-        if gl_format != 0 {
-            bail!("KTX1: Field 'gl_format' must be 0. (This tool temporarily supports only compressed textures.)");
-        }
+        // if gl_format != 0 {
+        //     bail!("KTX1: Field 'gl_format' must be 0. (This tool temporarily supports only compressed textures.)");
+        // }
 
         let gl_internal_format_num = reader.read_u32()?;
 
-        let ktx_lookup = constants::KtxFormat::from_u32(gl_internal_format_num)
-            .and_then(|format| mapping::get_mapping_for_internal_format(format));
+        let ktx_lookup = crate::pixel::gl::GlFormat::from_u32(gl_internal_format_num)
+            .and_then(|format| PixelFormat::for_gl_format(format));
 
-        let ktx_mapping = if let Some(mapping) = ktx_lookup {
-            mapping
+        let format = if let Some(format) = ktx_lookup {
+            format
         } else {
             bail!(format!(
                 "KTX1: Field 'gl_internal_format' references unknown format: {:#4X}",
@@ -116,14 +115,14 @@ impl FileCodec for Ktx1Codec {
             ));
         };
 
-        let gl_base_internal_format = reader.read_u32()?;
-        if gl_base_internal_format != ktx_mapping.base_internal_format.to_u32().unwrap() {
-            println!(
-                "KTX1: Warning: Field 'gl_base_internal_format' should be {:#4X}, but is {:#4X}.",
-                ktx_mapping.base_internal_format.to_u32().unwrap(),
-                gl_base_internal_format,
-            );
-        }
+        // let gl_base_internal_format = reader.read_u32()?;
+        // if gl_base_internal_format != ktx_mapping.base_internal_format.to_u32().unwrap() {
+        //     println!(
+        //         "KTX1: Warning: Field 'gl_base_internal_format' should be {:#4X}, but is {:#4X}.",
+        //         ktx_mapping.base_internal_format.to_u32().unwrap(),
+        //         gl_base_internal_format,
+        //     );
+        // }
         let pixel_width = reader.read_u32()?;
         let pixel_height = reader.read_u32()?;
         let pixel_depth = reader.read_u32()?;
@@ -133,7 +132,7 @@ impl FileCodec for Ktx1Codec {
         let bytes_of_key_value_data = reader.read_u32()?;
 
         Ok(Texture {
-            format: ktx_mapping.format,
+            format: format,
             dim: Dimensions(pixel_width, pixel_height, pixel_depth),
             mip_blobs: vec![],
         })

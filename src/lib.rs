@@ -10,6 +10,9 @@ extern crate byteordered;
 extern crate enum_primitive_derive;
 extern crate num_traits;
 
+#[macro_use]
+extern crate lazy_static;
+
 use std::result;
 
 pub mod file;
