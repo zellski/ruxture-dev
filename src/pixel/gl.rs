@@ -1,7 +1,7 @@
 // largely lifted from https://github.com/bkaradzic/bimg
 
-#[allow(dead_code, non_camel_case_types)]
-#[derive(Primitive, Copy, Clone, PartialEq, Eq, Debug)]
+#[allow(non_camel_case_types)]
+#[derive(Primitive, Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum GlFormat {
   ETC1_RGB8_OES = 0x8D64,
   COMPRESSED_R11_EAC = 0x9270,

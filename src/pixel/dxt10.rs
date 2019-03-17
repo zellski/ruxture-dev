@@ -1,7 +1,7 @@
 // largely lifted from https://github.com/bkaradzic/bimg
 
 #[allow(dead_code, non_camel_case_types)]
-#[derive(Primitive, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Primitive, Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum Dxt10Format {
   DXGI_FORMAT_R32G32B32A32_TYPELESS = 1,
   DXGI_FORMAT_R32G32B32A32_FLOAT = 2,

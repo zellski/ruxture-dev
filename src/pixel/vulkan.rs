@@ -1,7 +1,7 @@
 // largely lifted from https://github.com/bkaradzic/bimg
 
 #[allow(dead_code, non_camel_case_types)]
-#[derive(Primitive, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Primitive, Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum VkFormat {
     VK_FORMAT_UNDEFINED = 0,
     VK_FORMAT_R4G4_UNORM_PACK8 = 1,

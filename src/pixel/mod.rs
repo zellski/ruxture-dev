@@ -10,18 +10,53 @@ use vulkan::VkFormat;
 mod db;
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ColourSpace {
     Linear,
     sRGB,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum BaseFormat {
-    Red,
-    RG,
-    RGB,
-    RGBA,
+    R8,
+    R11,
+    R16,
+    R32,
+    R64,
+    R8G8,
+    R11G11,
+    R16G16,
+    R32G32,
+    R64G64,
+    R5G6B5,
+    R8G8B8,
+    R16G16B16,
+    R32G32B32,
+    R64G64B64,
+    R4G4B4A4,
+    R5G5B5A1,
+    R8G8B8A8,
+    R16G16B16A16,
+    R32G32B32A32,
+    R64G64B64A64,
+    A8R8G8B8,
+    B8G8R8,
+    B10G11R11,
+    B4G4R4A4,
+    B5G6R5,
+    B5G5R5A1,
+    B8G8R8A8,
+    A1R5G5B5,
+    A2R10G10B10,
+    A8B8G8R8,
+    E5B9G9R9,
+    S8,
+    D16,
+    D32,
+    D16S8,
+    D24S8,
+    D32S8,
+    X8D24,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -31,7 +66,7 @@ pub struct Dimensions(u32, u32, u32);
 pub struct PixelFormat {
     pub name: &'static str,
     pub base_format: BaseFormat,
-    pub colspace: ColourSpace,
+    pub colour_space: ColourSpace,
     pub block_dim: Option<Dimensions>,
     pub vk_format: Option<VkFormat>,
     pub gl_format: Option<GlFormat>,
