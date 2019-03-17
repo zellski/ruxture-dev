@@ -1,5 +1,5 @@
 pub mod gl;
-use gl::GlFormat;
+use gl::{GlBaseFormat, GlDataType, GlFormat};
 
 pub mod dxt10;
 use dxt10::Dxt10Format;
@@ -9,15 +9,8 @@ use vulkan::VkFormat;
 
 mod db;
 
-#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum ColourSpace {
-    Linear,
-    sRGB,
-}
-
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum BaseFormat {
+pub enum CompLayout {
     R8,
     R11,
     R16,
@@ -39,7 +32,6 @@ pub enum BaseFormat {
     R16G16B16A16,
     R32G32B32A32,
     R64G64B64A64,
-    A8R8G8B8,
     B8G8R8,
     B10G11R11,
     B4G4R4A4,
@@ -48,6 +40,7 @@ pub enum BaseFormat {
     B8G8R8A8,
     A1R5G5B5,
     A2R10G10B10,
+    A2B10G10R10,
     A8B8G8R8,
     E5B9G9R9,
     S8,
@@ -59,14 +52,72 @@ pub enum BaseFormat {
     X8D24,
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+pub enum CompContent {
+    UNORM,
+    SNORM,
+    SFLOAT,
+    UFLOAT,
+    UINT,
+    SINT,
+    SRGB,
+    SPECIAL,
+}
+
+// pub fn to_gl(layout: &CompLayout, content: &CompContent) -> GlBaseFormat {
+//     let int_or_not = |a, b| match *content {
+//         CompContent::UNORM | CompContent::SNORM | CompContent::SFLOAT | CompContent::SRGB => a,
+//         CompContent::UINT | CompContent::SINT => b,
+//     };
+
+//     match *layout {
+//         CompLayout::R8 | CompLayout::R16 | CompLayout::R32 | CompLayout::R64 => {
+//             int_or_not(GlBaseFormat::RED, GlBaseFormat::RED_INTEGER)
+//         }
+//         CompLayout::R8G8 | CompLayout::R16G16 | CompLayout::R32G32 | CompLayout::R64G64 => {
+//             int_or_not(GlBaseFormat::RG, GlBaseFormat::RG_INTEGER)
+//         }
+//         CompLayout::R5G6B5
+//         | CompLayout::R8G8B8
+//         | CompLayout::R16G16B16
+//         | CompLayout::R32G32B32
+//         | CompLayout::R64G64B64 => int_or_not(GlBaseFormat::RGB, GlBaseFormat::RGB_INTEGER),
+
+//         CompLayout::R4G4B4A4
+//         | CompLayout::R5G5B5A1
+//         | CompLayout::R8G8B8A8
+//         | CompLayout::R16G16B16A16
+//         | CompLayout::R32G32B32A32
+//         | CompLayout::R64G64B64A64 => int_or_not(GlBaseFormat::RGBA, GlBaseFormat::RGBA_INTEGER),
+
+//         CompLayout::A1R5G5B5 | CompLayout::A2R10G10B10 => GlBaseFormat::BGRA,
+//     }
+// }
+
+// CompLayout::B8G8R8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::B10G11R11 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::B4G4R4A4 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::B5G6R5 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::B5G5R5A1 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::B8G8R8A8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::A8B8G8R8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::E5B9G9R9 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::S8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::D16 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::D32 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::D16S8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::D24S8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::D32S8 => (GlBaseFormat::X, GlDataType::Y),
+// CompLayout::X8D24 => (GlBaseFormat::X, GlDataType::Y),
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Dimensions(u32, u32, u32);
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct PixelFormat {
-    pub name: &'static str,
-    pub base_format: BaseFormat,
-    pub colour_space: ColourSpace,
+    pub tag: &'static str,
+    pub comp_layout: CompLayout,
+    pub comp_content: CompContent,
     pub block_dim: Option<Dimensions>,
     pub vk_format: Option<VkFormat>,
     pub gl_format: Option<GlFormat>,
@@ -74,12 +125,22 @@ pub struct PixelFormat {
     pub dxt10_format: Option<Dxt10Format>,
 }
 
+impl std::fmt::Display for PixelFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "PixFormat({} - {:?}, {:?})",
+            self.tag, self.comp_layout, self.comp_content
+        )
+    }
+}
+
 impl PixelFormat {
-    pub fn for_gl_format(gl_format: GlFormat) -> Option<PixelFormat> {
+    pub fn for_gl_format(gl_format: GlFormat) -> Vec<&'static PixelFormat> {
         db::PIXEL_FORMATS
             .iter()
-            .find(|x| x.gl_format.map_or(false, |f| f == gl_format))
-            .map(|g| *g)
+            .filter(|x| x.gl_format.map_or(false, |f| f == gl_format))
+            .collect()
     }
 
     pub fn with_gl(&self, gl_format: GlFormat) -> PixelFormat {
@@ -298,7 +359,7 @@ impl PixelFormat {
 //         format: BC1,
 //         internal_format: KtxFormat::ALPHA,
 //         srgb_internal_format: KtxFormat::NONE,
-//         base_internal_format: KtxBaseFormat::ALPHA,
+//         base_internal_format: KtxCompLayout::ALPHA,
 //         data_type: UNSIGNED_BYTE,
 //     },
 //     KtxMapping {

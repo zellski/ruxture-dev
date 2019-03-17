@@ -27,13 +27,13 @@ fn check_for_collissions(formats: &Vec<PixelFormat>) {
             // (internal_format, base_format, colour_space) should be unique
             let unique_tuple = (
                 gl_format,
-                pixel_format.base_format,
-                pixel_format.colour_space,
+                pixel_format.comp_layout,
+                pixel_format.comp_content,
             );
             if gl_formats.contains(&unique_tuple) {
                 println!(
-                    "WARNING: Mapping collission for GL tuple {:?}: {:?}",
-                    unique_tuple, pixel_format.name
+                    "WARNING: Mapping collission for GL tuple {:?}: {}",
+                    unique_tuple, pixel_format
                 );
             } else {
                 gl_formats.insert(unique_tuple);
@@ -42,8 +42,8 @@ fn check_for_collissions(formats: &Vec<PixelFormat>) {
         if let Some(vk_format) = pixel_format.vk_format {
             if vk_formats.contains(&vk_format) {
                 println!(
-                    "WARNING: Mapping collision for VK format {:?}: {:?}.",
-                    vk_format, pixel_format.name
+                    "WARNING: Mapping collision for VK format {:?}: {}.",
+                    vk_format, pixel_format
                 );
             } else {
                 vk_formats.insert(vk_format);
