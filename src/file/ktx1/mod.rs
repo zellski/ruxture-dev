@@ -1,3 +1,4 @@
+use std::cmp;
 use std::io::{Cursor, Read};
 
 use byteordered::{ByteOrdered, Endianness};
@@ -7,7 +8,7 @@ use num_traits::*;
 use crate::file::{FileCodec, FileFormat};
 use crate::{Dimensions, FileBlob, RuxResult, Texture};
 
-use crate::pixel::gl::{GlBaseFormat, GlDataType, GlFormat};
+use crate::pixel::gl::{gl_upgrade_old_formats, GlBaseFormat, GlDataType, GlFormat};
 use crate::pixel::PixelFormat;
 
 // https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/#1
@@ -78,7 +79,7 @@ impl FileCodec for Ktx1Codec {
 
         let mut cursor = Cursor::new(&contents[12..]);
         let mut endian_buf = [0x00; 4];
-        cursor.read_exact(&mut endian_buf).unwrap(); // todo
+        cursor.read_exact(&mut endian_buf)?;
 
         let mut reader = ByteOrdered::runtime(
             cursor,
@@ -90,21 +91,13 @@ impl FileCodec for Ktx1Codec {
         );
 
         let gl_type = reader.read_u32()?;
-        // if gl_type != 0 {
-        //     bail!("KTX1: Field 'gl_type' must be 0. (This tool temporarily supports only compressed textures.)");
-        // }
-
-        // TODO: validate
-        let _gl_type_size = reader.read_u32()?;
-
+        let _gl_type_size = reader.read_u32()?; // TODO: validate
         let gl_format = reader.read_u32()?;
-        // if gl_format != 0 {
-        //     bail!("KTX1: Field 'gl_format' must be 0. (This tool temporarily supports only compressed textures.)");
-        // }
 
         let gl_internal_format_num = reader.read_u32()?;
+        let gl_internal_format =
+            GlFormat::from_u32(gl_internal_format_num).map(gl_upgrade_old_formats);
 
-        let gl_internal_format = GlFormat::from_u32(gl_internal_format_num);
         let format_matches =
             gl_internal_format.map_or(vec![], |format| PixelFormat::for_gl_format(format));
 
@@ -155,7 +148,8 @@ impl FileCodec for Ktx1Codec {
             good_matches = format_matches;
         }
 
-        if (good_matches.len() > 1) {
+        if good_matches.len() > 1 {
+            // TODO
             println!("Warning: several formats to choose from (sRGB?)");
         }
         let format = good_matches[0];
@@ -165,22 +159,49 @@ impl FileCodec for Ktx1Codec {
         let pixel_depth = reader.read_u32()?;
         let number_of_array_elements = reader.read_u32()?;
         let number_of_faces = reader.read_u32()?;
-        let number_of_mipmap_levels = reader.read_u32()?;
-        let bytes_of_key_value_data = reader.read_u32()?;
+        let number_of_mipmap_levels = cmp::max(1, reader.read_u32()?);
+        let mut bytes_of_key_value_data = reader.read_u32()?;
+
+        // TODO: actually do something with the key-value pairs
+        while bytes_of_key_value_data > 0 {
+            let kv_size = reader.read_u32()?;
+            let mut kv_buf = vec![0x00; kv_size as usize];
+            reader.read_exact(&mut kv_buf)?;
+            bytes_of_key_value_data -= 4 + kv_size;
+            while (bytes_of_key_value_data % 4) != 0 {
+                reader.read_u8()?;
+            }
+        }
+
+        let mut mip_blobs = vec![];
+        // TODO: properly handle imageSize & cubePadding in the cubemap case
+        for _mip_level in 0..number_of_mipmap_levels {
+            let image_size = reader.read_u32()?;
+            // TODO: validate image_size against dimensions & pixel format
+            let mut image_buf = vec![0x00; image_size as usize];
+            reader.read_exact(&mut image_buf)?;
+            mip_blobs.push(image_buf);
+        }
 
         Ok(Texture {
             format: *format,
-            dim: Dimensions(pixel_width, pixel_height, pixel_depth),
-            mip_blobs: vec![],
+            pixel_dim: Dimensions(pixel_width, pixel_height, pixel_depth),
+            array_size: number_of_array_elements,
+            face_count: number_of_faces,
+            mip_blobs,
         })
     }
-    fn generate(&self, texture: &Texture, format: FileFormat) -> RuxResult<(FileFormat, FileBlob)> {
+    fn generate(
+        &self,
+        _texture: &Texture,
+        _format: FileFormat,
+    ) -> RuxResult<(FileFormat, FileBlob)> {
         bail!("KTX1 generation not yet implemented");
     }
 }
 
-fn foo() {
-    let tests = vec![
+fn _foo() {
+    let _tests = vec![
         (
             GlFormat::DEPTH_COMPONENT16,
             GlBaseFormat::DEPTH_COMPONENT,

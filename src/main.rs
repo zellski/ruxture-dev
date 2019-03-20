@@ -12,8 +12,6 @@ use ruxture::*;
 use clap::{App, Arg};
 
 fn main() {
-    let TODO_clean_up_options_and_results = true;
-
     let matches = App::new("Ruxture")
         .version("0.1.0")
         .author("Pär Winzell <par.winzell@alyx.com>")
@@ -59,7 +57,7 @@ fn identify_file(in_file: &str) {
     let in_path = Path::new(in_file);
     let contents = read_and_parse(in_path);
     println!("Pixel Format: {:?}", contents.format);
-    println!("Texture Dimensions: {:?}", contents.dim);
+    println!("Texture Dimensions: {:?}", contents.pixel_dim);
 }
 
 fn convert_file(in_file: &str, format: Option<FileFormat>, out_file: &str) {

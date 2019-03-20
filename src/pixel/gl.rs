@@ -1,6 +1,98 @@
 use super::{CompContent, CompLayout};
 
-// largely lifted from https://github.com/bkaradzic/bimg
+use GlBaseFormat::*;
+use GlDataType::*;
+
+// TODO: should support, or at minimum detect and reject, formats from OpenGL < 4.0
+// TODO: should support a few OpenGL ES 3.0 formats, like GL_SRG8_EXT
+
+pub fn gl_upgrade_old_formats(format: GlFormat) -> GlFormat {
+  match format {
+    GlFormat::LUMINANCE => GlFormat::R8,
+    GlFormat::LUMINANCE_ALPHA => GlFormat::RG8,
+    GlFormat::RGB => GlFormat::RGB8,
+    GlFormat::RGBA => GlFormat::RGBA8,
+    _ => format,
+  }
+}
+
+pub fn to_gl(layout: &CompLayout, content: &CompContent) -> Option<(GlBaseFormat, GlDataType)> {
+  let by_content = |comp: GlBaseFormat,
+                    comp_int: GlBaseFormat,
+                    u_type: GlDataType,
+                    s_type: GlDataType,
+                    f_type: Option<GlDataType>| {
+    match *content {
+      CompContent::UNORM => Some((comp, u_type)),
+      CompContent::SRGB => Some((comp, u_type)),
+      CompContent::SNORM => Some((comp, s_type)),
+      CompContent::SFLOAT => f_type.and_then(|tt| Some((comp, tt))),
+      CompContent::UINT => Some((comp_int, u_type)),
+      CompContent::SINT => Some((comp_int, s_type)),
+      _ => panic!("Internal error: unexpected comp_content: {:?}", *content),
+    }
+  };
+  match *layout {
+    CompLayout::A8 => Some((ALPHA, UNSIGNED_BYTE)),
+    CompLayout::R8 => by_content(RED, RED_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::R16 => by_content(RED, RED_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
+    CompLayout::R32 => by_content(RED, RED_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
+    CompLayout::R8G8 => by_content(RG, RG_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::R16G16 => by_content(RG, RG_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
+    CompLayout::R32G32 => by_content(RG, RG_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
+    CompLayout::R8G8B8 => by_content(RGB, RGB_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::B8G8R8 => by_content(BGR, BGR_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::R16G16B16 => by_content(RGB, RGB_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
+    CompLayout::R32G32B32 => by_content(RGB, RGB_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
+    CompLayout::R8G8B8A8 => by_content(RGBA, RGBA_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::B8G8R8A8 => by_content(BGRA, BGRA_INTEGER, UNSIGNED_BYTE, BYTE, None),
+    CompLayout::R16G16B16A16 => {
+      by_content(RGBA, RGBA_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT))
+    }
+    CompLayout::R32G32B32A32 => by_content(RGBA, RGBA_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
+
+    CompLayout::R5G6B5 => Some((RGB, UNSIGNED_SHORT_5_6_5)),
+    CompLayout::B5G6R5 => Some((RGB, UNSIGNED_SHORT_5_6_5_REV)),
+    CompLayout::R4G4B4A4 => Some((RGBA, UNSIGNED_SHORT_4_4_4_4)),
+    CompLayout::B4G4R4A4 => Some((BGRA, UNSIGNED_SHORT_4_4_4_4)),
+    CompLayout::R5G5B5A1 => Some((RGBA, UNSIGNED_SHORT_5_5_5_1)),
+    CompLayout::B5G5R5A1 => Some((BGRA, UNSIGNED_SHORT_5_5_5_1)),
+    CompLayout::A1R5G5B5 => Some((BGRA, UNSIGNED_SHORT_1_5_5_5_REV)),
+    CompLayout::A2R10G10B10 => Some((
+      if *content == CompContent::UINT {
+        BGRA_INTEGER
+      } else {
+        BGRA
+      },
+      UNSIGNED_INT_2_10_10_10_REV,
+    )),
+    CompLayout::A2B10G10R10 => Some((
+      if *content == CompContent::UINT {
+        RGBA_INTEGER
+      } else {
+        RGBA
+      },
+      UNSIGNED_INT_2_10_10_10_REV,
+    )),
+    CompLayout::B10G11R11 => Some((RGB, UNSIGNED_INT_10F_11F_11F_REV)),
+    CompLayout::E5B9G9R9 => Some((RGB, UNSIGNED_INT_5_9_9_9_REV)),
+    CompLayout::S8 => Some((STENCIL_INDEX, UNSIGNED_BYTE)),
+    CompLayout::D16 => Some((DEPTH_COMPONENT, UNSIGNED_SHORT)),
+    CompLayout::D32 => Some((DEPTH_COMPONENT, FLOAT)),
+    CompLayout::D24S8 => Some((DEPTH_STENCIL, UNSIGNED_INT_24_8)),
+    CompLayout::D32S8 => Some((DEPTH_STENCIL, FLOAT_32_UNSIGNED_INT_24_8_REV)),
+    CompLayout::X8D24 => Some((DEPTH_COMPONENT, UNSIGNED_INT)),
+    // layouts without OpenGL equivalents
+    CompLayout::R64
+    | CompLayout::R64G64
+    | CompLayout::A8B8G8R8
+    | CompLayout::R64G64B64
+    | CompLayout::R11
+    | CompLayout::R11G11
+    | CompLayout::R64G64B64A64
+    | CompLayout::D16S8 => None,
+  }
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Primitive, Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -55,6 +147,13 @@ pub enum GlFormat {
   COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR = 0x93D5,
   COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR = 0x93D6,
   COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR = 0x93D8,
+
+  // OpenGL ES 2.0 had format = internal_format
+  ALPHA = 0x1906,
+  RGB = 0x1907,
+  RGBA = 0x1908,
+  LUMINANCE = 0x1909,
+  LUMINANCE_ALPHA = 0x190A,
 
   SRGB8_ALPHA8 = 0x8C43,
   SRGB8 = 0x8C41,
@@ -181,84 +280,4 @@ pub enum GlDataType {
   UNSIGNED_INT_10F_11F_11F_REV = 0x8C3B,
   UNSIGNED_INT_5_9_9_9_REV = 0x8C3E,
   FLOAT_32_UNSIGNED_INT_24_8_REV = 0x8DAD,
-}
-
-use GlBaseFormat::*;
-use GlDataType::*;
-
-pub fn to_gl(layout: &CompLayout, content: &CompContent) -> Option<(GlBaseFormat, GlDataType)> {
-  let by_content = |comp: GlBaseFormat,
-                    comp_int: GlBaseFormat,
-                    u_type: GlDataType,
-                    s_type: GlDataType,
-                    f_type: Option<GlDataType>| {
-    match *content {
-      CompContent::UNORM => Some((comp, u_type)),
-      CompContent::SRGB => Some((comp, u_type)),
-      CompContent::SNORM => Some((comp, s_type)),
-      CompContent::SFLOAT => f_type.and_then(|tt| Some((comp, tt))),
-      CompContent::UINT => Some((comp_int, u_type)),
-      CompContent::SINT => Some((comp_int, s_type)),
-      _ => panic!("Internal error: unexpected comp_content: {:?}", *content),
-    }
-  };
-  match *layout {
-    CompLayout::R8 => by_content(RED, RED_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::R16 => by_content(RED, RED_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
-    CompLayout::R32 => by_content(RED, RED_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
-    CompLayout::R8G8 => by_content(RG, RG_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::R16G16 => by_content(RG, RG_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
-    CompLayout::R32G32 => by_content(RG, RG_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
-    CompLayout::R8G8B8 => by_content(RGB, RGB_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::B8G8R8 => by_content(BGR, BGR_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::R16G16B16 => by_content(RGB, RGB_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT)),
-    CompLayout::R32G32B32 => by_content(RGB, RGB_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
-    CompLayout::R8G8B8A8 => by_content(RGBA, RGBA_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::B8G8R8A8 => by_content(BGRA, BGRA_INTEGER, UNSIGNED_BYTE, BYTE, None),
-    CompLayout::R16G16B16A16 => {
-      by_content(RGBA, RGBA_INTEGER, UNSIGNED_SHORT, SHORT, Some(HALF_FLOAT))
-    }
-    CompLayout::R32G32B32A32 => by_content(RGBA, RGBA_INTEGER, UNSIGNED_INT, INT, Some(FLOAT)),
-
-    CompLayout::R5G6B5 => Some((RGB, UNSIGNED_SHORT_5_6_5)),
-    CompLayout::B5G6R5 => Some((RGB, UNSIGNED_SHORT_5_6_5_REV)),
-    CompLayout::R4G4B4A4 => Some((RGBA, UNSIGNED_SHORT_4_4_4_4)),
-    CompLayout::B4G4R4A4 => Some((BGRA, UNSIGNED_SHORT_4_4_4_4)),
-    CompLayout::R5G5B5A1 => Some((RGBA, UNSIGNED_SHORT_5_5_5_1)),
-    CompLayout::B5G5R5A1 => Some((BGRA, UNSIGNED_SHORT_5_5_5_1)),
-    CompLayout::A1R5G5B5 => Some((BGRA, UNSIGNED_SHORT_1_5_5_5_REV)),
-    CompLayout::A2R10G10B10 => Some((
-      if *content == CompContent::UINT {
-        BGRA_INTEGER
-      } else {
-        BGRA
-      },
-      UNSIGNED_INT_2_10_10_10_REV,
-    )),
-    CompLayout::A2B10G10R10 => Some((
-      if *content == CompContent::UINT {
-        RGBA_INTEGER
-      } else {
-        RGBA
-      },
-      UNSIGNED_INT_2_10_10_10_REV,
-    )),
-    CompLayout::B10G11R11 => Some((RGB, UNSIGNED_INT_10F_11F_11F_REV)),
-    CompLayout::E5B9G9R9 => Some((RGB, UNSIGNED_INT_5_9_9_9_REV)),
-    CompLayout::S8 => Some((STENCIL_INDEX, UNSIGNED_BYTE)),
-    CompLayout::D16 => Some((DEPTH_COMPONENT, UNSIGNED_SHORT)),
-    CompLayout::D32 => Some((DEPTH_COMPONENT, FLOAT)),
-    CompLayout::D24S8 => Some((DEPTH_STENCIL, UNSIGNED_INT_24_8)),
-    CompLayout::D32S8 => Some((DEPTH_STENCIL, FLOAT_32_UNSIGNED_INT_24_8_REV)),
-    CompLayout::X8D24 => Some((DEPTH_COMPONENT, UNSIGNED_INT)),
-    // layouts without OpenGL equivalents
-    CompLayout::R64
-    | CompLayout::R64G64
-    | CompLayout::A8B8G8R8
-    | CompLayout::R64G64B64
-    | CompLayout::R11
-    | CompLayout::R11G11
-    | CompLayout::R64G64B64A64
-    | CompLayout::D16S8 => None,
-  }
 }

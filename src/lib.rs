@@ -31,7 +31,9 @@ pub struct Dimensions(u32, u32, u32);
 #[derive(PartialEq, Debug)]
 pub struct Texture {
     pub format: pixel::PixelFormat,
-    pub dim: Dimensions,
+    pub pixel_dim: Dimensions,
+    pub array_size: u32,
+    pub face_count: u32,
     pub mip_blobs: Vec<ImageBlob>,
 }
 

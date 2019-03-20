@@ -56,6 +56,8 @@ fn vulkan_only_formats() -> Vec<PixelFormat> {
 
 fn gl_supported_formats() -> Vec<PixelFormat> {
     vec![
+        // OpenGL ES 2.0
+        uncompressed(A8, UNORM).with_gl(GlFormat::R8),
         uncompressed(R4G4B4A4, UNORM)
             .with_gl(GlFormat::RGBA4)
             .with_vulkan(VkFormat::VK_FORMAT_R4G4B4A4_UNORM_PACK16),
