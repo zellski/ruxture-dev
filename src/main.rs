@@ -1,8 +1,5 @@
 extern crate clap;
 
-#[macro_use]
-extern crate simple_error;
-
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -69,27 +66,30 @@ fn convert_file(in_file: &str, format: Option<FileFormat>, out_file: &str) {
 
     let out_path = Path::new(out_file);
     let format = match format {
-        None => format_from_path(out_path)?,
+        None => format_from_path(out_path),
         Some(f) => f,
     };
 
-    let bytes_written =
-        generate_and_write(&texture, format, out_path).expect("File conversion failed.");
+    let bytes_written = generate_and_write(&texture, format, out_path);
     println!("Wrote {} bytes to {}.", bytes_written, out_file);
 }
 
-fn format_from_path(out_path: &Path) -> RuxResult<FileFormat> {
+fn format_from_path(out_path: &Path) -> FileFormat {
     if let Some(ext) = out_path.extension() {
-        Ok(match ext.to_str() {
+        match ext.to_str() {
             Some("dds") => FileFormat::DDS,
-            Some("ktx") => bail!("Use --format KTX1 or --format KTX2 to identify output format."),
+            Some("ktx") => {
+                println!("Use --format KTX1 or --format KTX2 to identify output format.");
+                std::process::exit(1);
+            }
             _ => FileFormat::DDS,
-        })
+        }
     } else {
-        bail!(
+        println!(
             "Can't figure texture format from output path: {}",
             out_path.display(),
-        )
+        );
+        std::process::exit(1);
     }
 }
 

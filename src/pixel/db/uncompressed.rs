@@ -38,7 +38,6 @@ fn vulkan_only_formats() -> Vec<PixelFormat> {
         uncompressed(B5G6R5, UNORM).with_vulkan(VkFormat::VK_FORMAT_B5G6R5_UNORM_PACK16),
         uncompressed(B5G5R5A1, UNORM).with_vulkan(VkFormat::VK_FORMAT_B5G5R5A1_UNORM_PACK16),
         uncompressed(A1R5G5B5, UNORM).with_vulkan(VkFormat::VK_FORMAT_A1R5G5B5_UNORM_PACK16),
-        uncompressed(R8, SRGB).with_vulkan(VkFormat::VK_FORMAT_R8_SRGB),
         uncompressed(R64, UINT).with_vulkan(VkFormat::VK_FORMAT_R64_UINT),
         uncompressed(R64, SINT).with_vulkan(VkFormat::VK_FORMAT_R64_SINT),
         uncompressed(R64, SFLOAT).with_vulkan(VkFormat::VK_FORMAT_R64_SFLOAT),
@@ -60,8 +59,12 @@ fn gl_supported_formats() -> Vec<PixelFormat> {
         // OpenGL ES 2
         uncompressed(A8, UNORM).with_dxt10(Dxt10Format::DXGI_FORMAT_A8_UNORM),
         // OpenGL ES 3
-        uncompressed(R8, UNORM).with_vulkan(VkFormat::VK_FORMAT_R8_SRGB),
-        uncompressed(R8G8, UNORM).with_vulkan(VkFormat::VK_FORMAT_R8G8_SRGB),
+        uncompressed(R8, UNORM).
+            with_gl(GlFormat::SR8)
+            .with_vulkan(VkFormat::VK_FORMAT_R8_SRGB),
+        uncompressed(R8G8, UNORM)
+            .with_gl(GlFormat::SRG8)
+            .with_vulkan(VkFormat::VK_FORMAT_R8G8_SRGB),
         // OpenGL 4
         uncompressed(R4G4B4A4, UNORM)
             .with_gl(GlFormat::RGBA4)
@@ -96,9 +99,6 @@ fn gl_supported_formats() -> Vec<PixelFormat> {
         uncompressed(R8G8, SINT)
             .with_gl(GlFormat::RG8I)
             .with_vulkan(VkFormat::VK_FORMAT_R8G8_SINT),
-        uncompressed(R8G8, SRGB)
-            .with_gl(GlFormat::RG8)
-            .with_vulkan(VkFormat::VK_FORMAT_R8G8_SRGB),
         uncompressed(R8G8B8, UNORM)
             .with_gl(GlFormat::RGB8)
             .with_vulkan(VkFormat::VK_FORMAT_R8G8B8_UNORM),
