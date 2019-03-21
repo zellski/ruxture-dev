@@ -4,7 +4,6 @@ use GlBaseFormat::*;
 use GlDataType::*;
 
 // TODO: should support, or at minimum detect and reject, formats from OpenGL < 4.0
-// TODO: should support a few OpenGL ES 3.0 formats, like GL_SRG8_EXT
 
 pub fn gl_upgrade_old_formats(format: GlFormat) -> GlFormat {
   match format {
@@ -155,9 +154,12 @@ pub enum GlFormat {
   LUMINANCE = 0x1909,
   LUMINANCE_ALPHA = 0x190A,
 
+  // OpenGL ES 3.0 has two formats that are not in OpenGL 4.*
+  SR8 = 0x8FBD,
+  SRG8 = 0x8FBE,
+
   SRGB8_ALPHA8 = 0x8C43,
   SRGB8 = 0x8C41,
-  SR8_EXT = 0x8FBD,
   RGBA8UI = 0x8D7C,
   RGBA8I = 0x8D8E,
   RGBA8_SNORM = 0x8F97,

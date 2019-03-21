@@ -1,3 +1,4 @@
+use crate::pixel::dxt10::Dxt10Format;
 use crate::pixel::gl::GlFormat;
 use crate::pixel::vulkan::VkFormat;
 
@@ -56,8 +57,12 @@ fn vulkan_only_formats() -> Vec<PixelFormat> {
 
 fn gl_supported_formats() -> Vec<PixelFormat> {
     vec![
-        // OpenGL ES 2.0
-        uncompressed(A8, UNORM).with_gl(GlFormat::R8),
+        // OpenGL ES 2
+        uncompressed(A8, UNORM).with_dxt10(Dxt10Format::DXGI_FORMAT_A8_UNORM),
+        // OpenGL ES 3
+        uncompressed(R8, UNORM).with_vulkan(VkFormat::VK_FORMAT_R8_SRGB),
+        uncompressed(R8G8, UNORM).with_vulkan(VkFormat::VK_FORMAT_R8G8_SRGB),
+        // OpenGL 4
         uncompressed(R4G4B4A4, UNORM)
             .with_gl(GlFormat::RGBA4)
             .with_vulkan(VkFormat::VK_FORMAT_R4G4B4A4_UNORM_PACK16),

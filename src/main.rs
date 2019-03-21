@@ -1,5 +1,8 @@
 extern crate clap;
 
+#[macro_use]
+extern crate simple_error;
+
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -47,9 +50,10 @@ fn main() {
         .value_of("format")
         .and_then(|format_str| Some(FileFormat::from_str(format_str).unwrap()));
 
-    match matches.value_of("out_file") {
-        None => identify_file(in_file),
-        Some(out_file) => convert_file(in_file, format, out_file),
+    if let Some(out_file) = matches.value_of("out_file") {
+        convert_file(in_file, format, out_file);
+    } else {
+        identify_file(in_file);
     }
 }
 
@@ -64,24 +68,28 @@ fn convert_file(in_file: &str, format: Option<FileFormat>, out_file: &str) {
     let texture = read_and_parse(Path::new(in_file));
 
     let out_path = Path::new(out_file);
-    let format = format.unwrap_or_else(|| format_from_path(out_path));
+    let format = match format {
+        None => format_from_path(out_path)?,
+        Some(f) => f,
+    };
 
-    let bytes_written = generate_and_write(&texture, format, out_path);
+    let bytes_written =
+        generate_and_write(&texture, format, out_path).expect("File conversion failed.");
     println!("Wrote {} bytes to {}.", bytes_written, out_file);
 }
 
-fn format_from_path(out_path: &Path) -> FileFormat {
+fn format_from_path(out_path: &Path) -> RuxResult<FileFormat> {
     if let Some(ext) = out_path.extension() {
-        match ext.to_str() {
+        Ok(match ext.to_str() {
             Some("dds") => FileFormat::DDS,
+            Some("ktx") => bail!("Use --format KTX1 or --format KTX2 to identify output format."),
             _ => FileFormat::DDS,
-        }
+        })
     } else {
-        println!(
+        bail!(
             "Can't figure texture format from output path: {}",
             out_path.display(),
-        );
-        std::process::exit(1);
+        )
     }
 }
 
