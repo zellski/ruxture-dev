@@ -108,51 +108,53 @@ impl FileCodec for Ktx1Codec {
             ));
         }
 
-        // TODO: don't filter compressed textures
-        let mut good_matches: Vec<&PixelFormat> = format_matches
-            .iter()
-            .filter(|m| {
-                let type_match = crate::pixel::gl::to_gl(&m.comp_layout, &m.comp_content);
-                if let Some((matched_format, matched_type)) = type_match {
-                    println!(
-                        "DEBUG: {:?}_{:?} => {:?}/{:?}",
-                        &m.comp_layout, &m.comp_content, matched_format, matched_type,
+        let format = {
+            if format_matches.iter().any(|f| f.is_compressed()) {
+                if !format_matches.iter().all(|f| f.is_compressed()) {
+                    panic!(
+                        "KTX1: INTERNAL ERROR: Field 'gl_internal_format' has both compressed and uncompressed matches: {:#4X}",
+                        gl_internal_format_num
                     );
-                    if matched_format.to_u32().unwrap() != gl_format {
-                        println!(
-                            "FLUSHED because format {:?} != {:?}",
-                            matched_format, gl_format
-                        );
-                        return false;
-                    }
-
-                    if matched_type.to_u32().unwrap() != gl_type {
-                        println!("FLUSHED because type {:?} != {:?}", matched_type, gl_type);
-                        return false;
-                    }
-                    return true;
-                } else {
-                    println!(
-                        "DEBUG: {:?}_{:?} => no match",
-                        &m.comp_layout, &m.comp_content
-                    );
-                    return false;
                 }
-            })
-            .cloned()
-            .collect();
+                if format_matches.len() > 1 {
+                    panic!(
+                        "KTX1: INTERNAL ERROR: Field 'gl_internal_format' has multiple compressed matches: {:#4X}",
+                        gl_internal_format_num
+                    );
+                }
+                format_matches[0]
+            } else {
+                let good_matches: Vec<&PixelFormat> = format_matches
+                    .iter()
+                    .filter(|m| {
+                        let type_match = crate::pixel::gl::to_gl(&m.comp_layout, &m.comp_content);
+                        if let Some((matched_format, matched_type)) = type_match {
+                            matched_format.to_u32().unwrap() == gl_format
+                                && matched_type.to_u32().unwrap() == gl_type
+                        } else {
+                            false
+                        }
+                    })
+                    .cloned()
+                    .collect();
 
-        if good_matches.is_empty() {
-            // TODO
-            println!("Warning: KTX fields buggered!\n");
-            good_matches = format_matches;
-        }
+                let good_matches = if good_matches.is_empty() {
+                    println!("Warning: ignoring incompatible fields gl_type/gl_format.");
+                    format_matches
+                } else {
+                    good_matches
+                };
 
-        if good_matches.len() > 1 {
-            // TODO
-            println!("Warning: several formats to choose from (sRGB?)");
-        }
-        let format = good_matches[0];
+                if good_matches.len() > 1 {
+                    // TODO: figure out how to decide whether to look for an sRGB variant
+                    println!(
+                        "KTX1: (TODO) Field 'gl_internal_format' is ambiguous: {:#4X}",
+                        gl_internal_format_num
+                    );
+                }
+                good_matches[0]
+            }
+        };
 
         let pixel_width = reader.read_u32()?;
         let pixel_height = reader.read_u32()?;
@@ -160,7 +162,7 @@ impl FileCodec for Ktx1Codec {
         let number_of_array_elements = reader.read_u32()?;
         let number_of_faces = reader.read_u32()?;
         let number_of_mipmap_levels = cmp::max(1, reader.read_u32()?);
-        let mut bytes_of_key_value_data = reader.read_u32()?;
+        let mut bytes_of_key_value_data = reader.read_u32()? as isize;
 
         // TODO: actually do something with the key-value pairs
         while bytes_of_key_value_data > 0 {

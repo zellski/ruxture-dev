@@ -59,8 +59,8 @@ fn gl_supported_formats() -> Vec<PixelFormat> {
         // OpenGL ES 2
         uncompressed(A8, UNORM).with_dxt10(Dxt10Format::DXGI_FORMAT_A8_UNORM),
         // OpenGL ES 3
-        uncompressed(R8, UNORM).
-            with_gl(GlFormat::SR8)
+        uncompressed(R8, UNORM)
+            .with_gl(GlFormat::SR8)
             .with_vulkan(VkFormat::VK_FORMAT_R8_SRGB),
         uncompressed(R8G8, UNORM)
             .with_gl(GlFormat::SRG8)

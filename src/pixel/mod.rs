@@ -98,6 +98,10 @@ impl PixelFormat {
             .collect()
     }
 
+    pub fn is_compressed(&self) -> bool {
+        self.block_dim.is_some()
+    }
+
     pub fn with_gl(&self, gl_format: GlFormat) -> PixelFormat {
         PixelFormat {
             gl_format: Some(gl_format),
